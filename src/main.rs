@@ -1,8 +1,8 @@
 use std::env;
 use std::process;
 
+use powerset::PowerSet;
 use powerset::InputSet;
-use powerset::compare_len;
 
 fn main() {
     // Parse input
@@ -20,23 +20,8 @@ fn main() {
         process::exit(1);
     }
 
-    let mut powerset = vec!();
-    
-    // Empty set
-    powerset.push(String::from(""));
-
-    for set_el in parsed_set {
-        for j in 0..powerset.len() {
-            let new_set = if powerset[j].is_empty()
-                { format!("{}", set_el) } 
-                else 
-                { format!("{},{}", &powerset[j], set_el) };
-            powerset.push(new_set);
-        }
-    }
-    
-    // Sort by string length (set size)
-    powerset.sort_by(|a,b| compare_len(&a, &b));
-    println!("{:?}", powerset);
+    let mut powerset = PowerSet { data: parsed_set, powerset: vec!(String::from("")) };
+    powerset.generate_powerset();
+    powerset.print();
 }
 
