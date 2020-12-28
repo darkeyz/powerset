@@ -1,82 +1,102 @@
 use std::env;
+use std::error::Error;
+use std::fs;
+
+#[derive(Debug)]
+pub enum InputType {
+    Raw,
+    File,
+}
 
 // #[derive(Debug)]
 pub struct InputSet {
     pub set: String,
+    pub input_type: InputType,
 }
 
 impl InputSet {
     pub fn new(mut args: env::Args) -> Result<InputSet, &'static str> {
         args.next();
 
-        let set = match args.next() {
-            Some(arg) => arg,
-            None => return Err("No string given!"),
+        let input_type = match args.next() {
+            Some(arg) => match &arg[..] {
+                "-i" => InputType::Raw,
+                "-f" => InputType::File,
+                _ => return Err("Invalid option! (Use `-i <raw_input>` or `-f <file_path>`)"),
+            },
+            _ => return Err("Empty option! (Use `-i <raw_input>` or `-f <file_path>`)"),
         };
 
-        Ok(InputSet { set })
+        let set_arg = match args.next() {
+            Some(arg) => arg,
+            _ => return Err("Empty input! (Use `-i <raw_input>` or `-f <file_path>`)"),
+        };
+
+        let set = match input_type {
+            InputType::Raw => set_arg,
+            InputType::File => match readfile(set_arg) {
+                Ok(content) => content,
+                _ => return Err("Couldn't read file!"),
+            },
+        };
+
+        Ok(InputSet { set, input_type })
     }
 }
 
-#[derive(Debug)]
-pub struct PowerSet<'a> {
-    pub data: Vec<&'a str>,
-    pub powerset: Vec<String>,
-}
+pub fn into_powerset(set: String) -> Result<String, &'static str> {
+    // println!("{:?}", set);
+    let parsed_set: Vec<&str> = set.split(",").collect();
 
-impl<'a> PowerSet<'a> {
-    pub fn new(data: Vec<&'a str>) -> PowerSet<'a> {
-        PowerSet { data, powerset: vec!(String::from("")) }
+    let invalid_string =
+        parsed_set
+            .iter()
+            .enumerate()
+            .any(|(i, val)| if i > 0 { val.is_empty() } else { false }); // validate input
+    if invalid_string {
+        return Err("Invalid input/sets found!");
     }
 
-    pub fn generate_powerset(&mut self) {
-        for set_el in &self.data {
-            for j in 0..self.powerset.len() {
-                let new_set = if self.powerset[j].is_empty()
-                    { format!("{}", set_el) } 
-                    else 
-                    { format!("{},{}", &self.powerset[j], set_el) };
-                self.powerset.push(new_set);
+    let mut powerset = vec![String::from("")];
+
+    let empty_set = parsed_set.iter().all(|val| val.trim().is_empty()); // empty set/file is accepted
+
+    // Handle empty set's'powerset
+    if !(empty_set) {
+        for set_el in parsed_set {
+            for j in 0..powerset.len() {
+                // Create new set based on current one adding the new item
+                let new_set = if powerset[j].is_empty() {
+                    format!("{}", set_el)
+                } else {
+                    format!("{},{}", &powerset[j], set_el)
+                };
+                powerset.push(
+                    new_set
+                        .trim_matches(char::is_whitespace) // trim end/start whitspaces
+                        .replace(char::is_whitespace, ""), // clean all other whitspaces
+                );
             }
         }
-        // Sort by string length (set size)
-        self.powerset.sort_by(|a,b| PowerSet::compare_len(&a, &b));
     }
-
-    pub fn print(&self) {
-        let output = self.powerset.join("\n");
-        println!("{}", output);
-    }
-
-    pub fn format(&self) -> String {
-        let output = self.powerset.join("\n");
-        output
-    }
-
-    fn compare_len(a: &str, b: &str) -> std::cmp::Ordering {
-        match a.len() < b.len() {
-            true => std::cmp::Ordering::Less,
-            false => std::cmp::Ordering::Greater,
-        }
-    }
+    // println!("{:?}", powerset);
+    // Sort by string length (set size)
+    powerset.sort_by(|a, b| compare_len(&a, &b)); // Sort the powerset
+    let output = powerset.join("\n");
+    print!("{}", output);
+    Ok(output)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+fn readfile(file_path: String) -> Result<String, Box<dyn Error>> {
+    let file_content = fs::read_to_string(file_path)?;
+    Ok(file_content
+        .trim_matches(char::is_whitespace)
+        .replace(char::is_whitespace, ""))
+}
 
-    #[test]
-    fn valid_input_test () {
-        let input = vec!("123", "456", "789");
-        let mut powerset = PowerSet { data: input, powerset: vec!(String::from("")) };
-        powerset.generate_powerset();
-        assert_eq!("
-123
-456
-789
-123,456
-123,789
-456,789
-123,456,789", powerset.format());
+fn compare_len(a: &str, b: &str) -> std::cmp::Ordering {
+    match a.len() < b.len() {
+        true => std::cmp::Ordering::Less,
+        false => std::cmp::Ordering::Greater,
     }
 }
