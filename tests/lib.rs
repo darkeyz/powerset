@@ -37,7 +37,7 @@ fn valid_input() {
     );
 }
 #[test]
-#[should_panic(expected = "Invalid input/sets found!")]
+#[should_panic]
 fn invalid_input() {
     let set = String::from("123,456,789,");
     let input = InputSet {

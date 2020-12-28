@@ -2,12 +2,14 @@ use std::env;
 use std::error::Error;
 use std::fs;
 
+/// Contains input types (raw|file)
 #[derive(Debug)]
 pub enum InputType {
     Raw,
     File,
 }
 
+/// Contains input and parsing option
 // #[derive(Debug)]
 pub struct InputSet {
     pub set: String,
@@ -15,6 +17,7 @@ pub struct InputSet {
 }
 
 impl InputSet {
+    /// Parses and validate the string input and options before creating the instance
     pub fn new(mut args: env::Args) -> Result<InputSet, &'static str> {
         args.next();
 
@@ -40,22 +43,25 @@ impl InputSet {
             },
         };
 
+        let parsed_set: Vec<&str> = set.split(",").collect();
+
+        let invalid_string =
+            parsed_set
+                .iter()
+                .enumerate()
+                .any(|(i, val)| if i > 0 { val.is_empty() } else { false }); // validate input
+        if invalid_string {
+            return Err("Invalid input/sets found!");
+        }
+
         Ok(InputSet { set, input_type })
     }
 }
 
+/// Prints, and returns the powerset from a string input 
 pub fn into_powerset(set: String) -> Result<String, &'static str> {
     // println!("{:?}", set);
     let parsed_set: Vec<&str> = set.split(",").collect();
-
-    let invalid_string =
-        parsed_set
-            .iter()
-            .enumerate()
-            .any(|(i, val)| if i > 0 { val.is_empty() } else { false }); // validate input
-    if invalid_string {
-        return Err("Invalid input/sets found!");
-    }
 
     let mut powerset = vec![String::from("")];
 
@@ -63,7 +69,7 @@ pub fn into_powerset(set: String) -> Result<String, &'static str> {
 
     // Handle empty set's'powerset
     if !(empty_set) {
-        for set_el in parsed_set {
+        for set_el in parsed_set.iter() {
             for j in 0..powerset.len() {
                 // Create new set based on current one adding the new item
                 let new_set = if powerset[j].is_empty() {
@@ -71,6 +77,7 @@ pub fn into_powerset(set: String) -> Result<String, &'static str> {
                 } else {
                     format!("{},{}", &powerset[j], set_el)
                 };
+                // Concat new set to existing powerset
                 powerset.push(
                     new_set
                         .trim_matches(char::is_whitespace) // trim end/start whitspaces
